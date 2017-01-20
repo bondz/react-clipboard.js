@@ -1,12 +1,15 @@
 import React from 'react';
+import ReactDOM from 'react-dom';
 
 export default class ClipboardButton extends React.Component {
   static propTypes = {
-    options: React.PropTypes.object,
-    type: React.PropTypes.string,
+    options: React.PropTypes.object,   
     className: React.PropTypes.string,
     style: React.PropTypes.object,
-    component: React.PropTypes.string,
+    component: React.PropTypes.oneOfType([
+      React.PropTypes.string,
+      React.PropTypes.func,
+    ]),
     children: React.PropTypes.oneOfType([
       React.PropTypes.element,
       React.PropTypes.string,
@@ -16,6 +19,7 @@ export default class ClipboardButton extends React.Component {
   }
 
   static defaultProps = {
+    component: 'button',
     onClick: function() {},
   }
 
@@ -57,8 +61,10 @@ export default class ClipboardButton extends React.Component {
   componentDidMount() {
     // Support old API by trying to assign this.props.options first;
     const options = this.props.options || this.propsWith(/^option-/, true);
-    const element = React.version.match(/0\.13(.*)/)
+    let element = React.version.match(/0\.13(.*)/)
         ? this.refs.element.getDOMNode() : this.refs.element;
+            
+    element = ReactDOM.findDOMNode(element);
     const Clipboard = require('clipboard');
     this.clipboard = new Clipboard(element, options);
 
@@ -69,33 +75,24 @@ export default class ClipboardButton extends React.Component {
   }
 
   render() {
-    const attributes = {
-      type: this.getType(),
-      className: this.props.className || '',
-      style: this.props.style || {},
-      ref: 'element',
-      onClick: this.props.onClick,
-      ...this.propsWith(/^data-/),
-      ...this.propsWith(/^button-/, true),
-    };
+    const pprops = Object.assign({}, this.props);
+    delete pprops.options;
+    delete pprops.component;
+    delete pprops.children;
+    delete pprops.onSuccess;
+    delete pprops.onError;
+    delete pprops['option-text'];
 
-    return React.createElement(
-      this.getComponent(),
-      attributes,
-      this.props.children
-    );
-  }
-
-  getType() {
-    if (this.getComponent() === 'button' || this.getComponent() === 'input') {
-      return this.props.type || 'button';
-    }
-    else {
-      return undefined;
-    }
-  }
-
-  getComponent() {
-    return this.props.component || 'button';
+    /* eslint-disable */
+    const { children, component: Component } = this.props;
+    /* eslint-enable */
+    
+    const buttonProps = this.propsWith(/^button-/, true);
+    
+    return (
+      <Component ref="element" { ...pprops } { ...buttonProps }>
+        {children}
+      </Component>
+    );    
   }
 }
